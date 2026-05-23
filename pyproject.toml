@@ -8,7 +8,7 @@ version = "0.1.2"
 description = "让 AI 真正读懂你的代码 — 业务流程积木化文档体系"
 readme = "README.md"
 requires-python = ">=3.8"
-license = { file = "LICENSE" }
+license = "MIT"
 authors = [
     { name = "vibe-blocks contributors" }
 ]
@@ -25,7 +25,6 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Console",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
