@@ -61,10 +61,6 @@ vibe-blocks = "vibe_blocks.cli:main"
 [tool.hatch.build.targets.wheel]
 packages = ["src/vibe_blocks"]
 
-[tool.hatch.build.targets.wheel.force-include]
-"src/vibe_blocks/templates" = "vibe_blocks/templates"
-"src/vibe_blocks/assets" = "vibe_blocks/assets"
-
 [tool.hatch.build.targets.sdist]
 include = [
     "src/vibe_blocks",
