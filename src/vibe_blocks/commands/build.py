@@ -173,8 +173,8 @@ def build_cmd(
     )
     click.echo(f"  分组数量：{len(output_data)}")
     click.echo(
-        f"  服务拓扑：BFF={sum(1 for l in layers if l['type']=='bff')}层, "
-        f"core={sum(len(l['services']) for l in layers if l['type']=='core')}, "
-        f"infra={sum(len(l['services']) for l in layers if l['type']=='infra')}, "
-        f"external={sum(len(l['services']) for l in layers if l['type']=='external')}"
+        f"  服务拓扑：BFF={sum(1 for lyr in layers if lyr['type']=='bff')}层, "
+        f"core={sum(len(lyr['services']) for lyr in layers if lyr['type']=='core')}, "
+        f"infra={sum(len(lyr['services']) for lyr in layers if lyr['type']=='infra')}, "
+        f"external={sum(len(lyr['services']) for lyr in layers if lyr['type']=='external')}"
     )
