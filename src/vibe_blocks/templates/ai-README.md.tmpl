@@ -1,0 +1,34 @@
+# AI 知识库 — {{PROJECT_NAME}}
+
+本目录由 [vibe-blocks](https://github.com/jiangxufa/vibe-blocks) 管理，专为 AI 辅助编程（vibe coding）设计。
+AI 在编码时可以从这里获取业务上下文、架构规则和枚举定义，无需反复阅读源码。
+
+## 目录结构
+
+```
+.ai/
+├── OVERVIEW.md         # 项目全景概述
+├── conventions.md      # 编码与积木维护约定
+├── blocks/             # 业务流程积木（每个文件 = 一条流程）
+│   ├── _index.md       # 积木索引（按业务域分类）
+│   └── _template.md    # 积木编写模板
+├── services/           # 服务档案
+├── references/         # 参考速查（枚举、常量）
+├── decisions/          # 架构决策记录（ADR）
+├── prompts/            # AI 工作流模板
+└── changelog/          # 知识库变更日志
+```
+
+## 使用方式
+
+1. **AI 编码入口**：先读项目根目录的 `CLAUDE.md`，再按需深入 `.ai/` 子目录
+2. **新增积木**：运行 `vibe-blocks new <id>`
+3. **生成可视化**：运行 `vibe-blocks build`
+4. **刷新 CLAUDE.md**：运行 `vibe-blocks claude-md`
+
+## 维护规则
+
+- 新增业务流程时同步创建积木文件
+- 修改业务流程相关代码时同步更新积木
+- 异步调用（MQ）在 Mermaid 图中用 `rect rgb(255, 230, 150)` 标记
+- 详见 `.ai/conventions.md`

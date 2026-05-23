@@ -1,0 +1,4 @@
+# Spring Boot 配置占位（伪代码用于 vibe-blocks claude-md 技术栈检测）
+spring:
+  application:
+    name: fresh-mart

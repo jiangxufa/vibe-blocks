@@ -1,0 +1,52 @@
+---
+id: {{ID}}
+name: {{NAME}}
+owner: {{OWNER}}
+status: draft
+last_modified: {{DATE}}
+services: {{SERVICES}}
+triggers: {{TRIGGERS}}
+related_mr:
+---
+
+## 流程总览
+
+```mermaid
+sequenceDiagram
+    participant C as 客户端
+    participant A as 服务A
+    participant DB as Database
+
+    C->>A: 请求
+    A->>DB: 数据操作
+    DB-->>A: 结果
+    A-->>C: 响应
+```
+
+## 节点逻辑
+
+### 服务A — 角色描述
+
+**入口**：`ClassName#methodName`
+**锚点**：`module/src/main/.../ClassName.ext#methodName`
+
+处理步骤：
+1. 步骤1
+2. 步骤2
+3. 步骤3
+
+**依赖服务**：
+-
+
+**写表**：
+**发事件**：无
+
+## 异常路径
+
+| 场景 | 处理 | 返回 |
+|------|------|------|
+|      |      |      |
+
+## 变更记录
+
+- {{DATE}}: 初始创建

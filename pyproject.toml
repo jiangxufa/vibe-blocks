@@ -1,0 +1,92 @@
+[build-system]
+requires = ["hatchling>=1.18"]
+build-backend = "hatchling.build"
+
+[project]
+name = "vibe-blocks"
+version = "0.1.0"
+description = "让 AI 真正读懂你的代码 — 业务流程积木化文档体系"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { file = "LICENSE" }
+authors = [
+    { name = "vibe-blocks contributors" }
+]
+keywords = [
+    "vibe-coding",
+    "ai-assisted-development",
+    "claude",
+    "documentation",
+    "mermaid",
+    "microservices",
+    "business-process",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Documentation",
+    "Topic :: Software Development :: Documentation",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "click>=8.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "ruff>=0.5.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/jiangxufa/vibe-blocks"
+Documentation = "https://github.com/jiangxufa/vibe-blocks/tree/main/docs"
+Repository = "https://github.com/jiangxufa/vibe-blocks"
+Issues = "https://github.com/jiangxufa/vibe-blocks/issues"
+Changelog = "https://github.com/jiangxufa/vibe-blocks/blob/main/CHANGELOG.md"
+
+[project.scripts]
+vibe-blocks = "vibe_blocks.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/vibe_blocks"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"src/vibe_blocks/templates" = "vibe_blocks/templates"
+"src/vibe_blocks/assets" = "vibe_blocks/assets"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/vibe_blocks",
+    "docs",
+    "examples",
+    "tests",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "CODE_OF_CONDUCT.md",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py38"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+addopts = "-ra -q"

@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vibe Coding 体系介绍 - AI 辅助开发知识库</title>
+<style>
+:root {
+  --bg: #F8FAFC;
+  --surface: #FFFFFF;
+  --surface-2: #F1F5F9;
+  --border: #E2E8F0;
+  --text-1: #0F172A;
+  --text-2: #475569;
+  --text-3: #94A3B8;
+  --brand: #2563EB;
+  --brand-light: #EFF6FF;
+  --brand-border: #93C5FD;
+  --purple: #7C3AED;
+  --purple-light: #F5F3FF;
+  --green: #059669;
+  --green-light: #ECFDF5;
+  --orange: #D97706;
+  --orange-light: #FFFBEB;
+  --cyan: #0E7490;
+  --cyan-light: #ECFEFF;
+  --radius: 12px;
+  --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'PingFang SC', sans-serif;
+  background: var(--bg); color: var(--text-1); line-height: 1.8;
+}
+
+/* Hero */
+.hero {
+  text-align: center; padding: 60px 24px 40px;
+  background: linear-gradient(180deg, var(--brand-light) 0%, var(--bg) 100%);
+}
+.hero h1 { font-size: 32px; font-weight: 800; color: var(--text-1); margin-bottom: 12px; }
+.hero .subtitle { font-size: 16px; color: var(--text-2); max-width: 600px; margin: 0 auto; }
+.hero .badge {
+  display: inline-block; margin-top: 16px; padding: 6px 16px;
+  background: var(--surface); border: 1px solid var(--brand-border);
+  border-radius: 20px; font-size: 13px; color: var(--brand); font-weight: 500;
+}
+
+/* Nav */
+.nav {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(255,255,255,0.92); backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border);
+  display: flex; justify-content: center; gap: 4px; padding: 10px 16px;
+  flex-wrap: wrap;
+}
+.nav a {
+  padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 500;
+  color: var(--text-2); text-decoration: none; transition: all var(--transition);
+}
+.nav a:hover { background: var(--surface-2); color: var(--text-1); }
+.nav a.active { background: var(--brand); color: white; }
+
+/* Container */
+.container { max-width: 900px; margin: 0 auto; padding: 0 24px; }
+
+/* Section */
+.section { padding: 48px 0; }
+.section-title {
+  font-size: 22px; font-weight: 700; margin-bottom: 8px;
+  display: flex; align-items: center; gap: 10px;
+}
+.section-title .icon { font-size: 24px; }
+.section-desc { font-size: 14px; color: var(--text-2); margin-bottom: 24px; }
+
+/* Cards */
+.card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+.card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 20px; transition: all var(--transition);
+}
+.card:hover { border-color: var(--brand-border); box-shadow: 0 4px 16px rgba(37,99,235,0.08); }
+.card-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+.card-text { font-size: 13px; color: var(--text-2); line-height: 1.7; }
+
+/* Value cards */
+.value-card { border-left: 3px solid var(--brand); }
+.value-card.purple { border-left-color: var(--purple); }
+.value-card.green { border-left-color: var(--green); }
+.value-card.orange { border-left-color: var(--orange); }
+.value-number { font-size: 28px; font-weight: 800; color: var(--brand); margin-bottom: 4px; }
+.value-card.purple .value-number { color: var(--purple); }
+.value-card.green .value-number { color: var(--green); }
+.value-card.orange .value-number { color: var(--orange); }
+
+/* File tree */
+.file-tree {
+  background: #1E293B; border-radius: var(--radius); padding: 20px 24px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 13px;
+  color: #E2E8F0; line-height: 2; overflow-x: auto;
+}
+.file-tree .dir { color: #93C5FD; }
+.file-tree .file { color: #A5B4FC; }
+.file-tree .comment { color: #64748B; }
+/* Scenario tabs */
+.scenario-tabs { display: flex; gap: 0; border-bottom: 2px solid var(--border); margin-bottom: 24px; }
+.scenario-tab {
+  padding: 12px 20px; font-size: 14px; font-weight: 500; color: var(--text-3);
+  cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px;
+  transition: all var(--transition);
+}
+.scenario-tab:hover { color: var(--text-2); }
+.scenario-tab.active { color: var(--brand); border-bottom-color: var(--brand); }
+.scenario-panel { display: none; }
+.scenario-panel.active { display: block; animation: fadeIn 0.3s ease; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* Steps */
+.step-list { counter-reset: step; }
+.step-item {
+  position: relative; padding: 16px 20px 16px 56px; margin-bottom: 12px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+}
+.step-item::before {
+  counter-increment: step; content: counter(step);
+  position: absolute; left: 16px; top: 16px;
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--brand); color: white; font-size: 13px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+}
+.step-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.step-desc { font-size: 13px; color: var(--text-2); }
+.step-cmd {
+  margin-top: 8px; padding: 8px 12px; background: #1E293B; border-radius: 6px;
+  font-family: monospace; font-size: 12px; color: #E2E8F0;
+}
+
+/* Comparison */
+.compare-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.compare-table th {
+  text-align: left; padding: 10px 14px; background: var(--surface-2);
+  border-bottom: 1px solid var(--border); color: var(--text-2); font-weight: 500;
+}
+.compare-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--text-2); }
+.compare-table tr:hover td { background: var(--brand-light); }
+
+/* Highlight box */
+.highlight-box {
+  background: var(--brand-light); border: 1px solid var(--brand-border);
+  border-radius: var(--radius); padding: 16px 20px; margin: 16px 0;
+}
+.highlight-box p { font-size: 13px; color: var(--text-2); }
+.highlight-box strong { color: var(--brand); }
+
+/* Footer */
+.footer { text-align: center; padding: 40px 24px; color: var(--text-3); font-size: 12px; border-top: 1px solid var(--border); margin-top: 40px; }
+
+/* Compare split layout */
+.compare-split {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 16px;
+}
+@media (max-width: 900px) { .compare-split { grid-template-columns: 1fr; } }
+.compare-col {
+  border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; background: var(--surface);
+}
+.compare-col--with { border-color: #BBF7D0; background: #F0FDF4; }
+.compare-col--partial { border-color: #FDE68A; background: #FFFBEB; }
+.compare-col--without { border-color: #FECACA; background: #FEF2F2; }
+.compare-header {
+  font-size: 13px; font-weight: 700; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--border);
+}
+.compare-header--with { color: var(--green); border-bottom-color: #BBF7D0; }
+.compare-header--partial { color: var(--orange); border-bottom-color: #FDE68A; }
+.compare-header--without { color: #DC2626; border-bottom-color: #FECACA; }
+.compare-meta { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 10px; }
+.meta-tag {
+  display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: 500;
+}
+.meta-tag--green { background: #DCFCE7; color: #166534; }
+.meta-tag--yellow { background: #FEF3C7; color: #92400E; }
+.meta-tag--red { background: #FEE2E2; color: #991B1B; }
+
+/* Chat simulation */
+.chat-simulation { display: flex; flex-direction: column; gap: 8px; }
+.chat-bubble {
+  padding: 10px 14px; border-radius: 10px; font-size: 12px; line-height: 1.6; max-width: 95%;
+}
+.chat-user {
+  background: var(--brand); color: white; align-self: flex-end; border-bottom-right-radius: 3px;
+}
+.chat-ai {
+  background: white; color: var(--text-2); border: 1px solid var(--border); align-self: flex-start; border-bottom-left-radius: 3px;
+}
+.chat-ai--error { border-color: #FECACA; background: #FFF5F5; }
+.compare-col .step-list { margin: 0; }
+.compare-col .step-item { padding: 8px 8px 8px 38px; margin-bottom: 6px; font-size: 11px; }
+.compare-col .step-item::before { width: 22px; height: 22px; font-size: 10px; left: 8px; top: 8px; }
+.compare-col .step-title { font-size: 12px; }
+.compare-col .step-desc { font-size: 11px; }
+.compare-col .step-cmd { font-size: 10px; padding: 5px 8px; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>Vibe Coding 体系</h1>
+  <p class="subtitle">基于 .ai 知识库的 AI 辅助开发方法论，让 AI 真正理解你的项目，成为靠谱的编码搭档</p>
+  <span class="badge">vibe-blocks · 业务流程积木化文档体系</span>
+</div>
+
+<nav class="nav" id="nav">
+  <a href="#what" class="active">是什么</a>
+  <a href="#why">为什么</a>
+  <a href="#structure">知识库结构</a>
+  <a href="#scenarios">业务场景</a>
+  <a href="#compare">对比</a>
+  <a href="#start">快速开始</a>
+</nav>
+
+<div class="container">
+
+<!-- Section: 是什么 -->
+<section class="section" id="what">
+  <h2 class="section-title"><span class="icon">🧩</span> 什么是 Vibe Coding</h2>
+  <p class="section-desc">Vibe Coding 不是一个工具，而是一套将项目知识结构化、让 AI 能深度理解并参与开发的工作方法。</p>
+
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-title">核心理念</div>
+      <div class="card-text">在项目中维护一个 <code>.ai</code> 文件夹，用结构化的 Markdown 描述架构、服务、业务流程和编码规范。AI 读取后能像老员工一样理解项目上下文。</div>
+    </div>
+    <div class="card">
+      <div class="card-title">积木化思维</div>
+      <div class="card-text">每个完整的业务流程被抽象为一块"积木"——从触发条件到最终响应，包含调用链路、时序图、异常处理、写表操作，形成可复用的知识单元。</div>
+    </div>
+    <div class="card">
+      <div class="card-title">人机协作</div>
+      <div class="card-text">开发者负责设计决策和业务判断，AI 负责代码实现和模式匹配。知识库是两者之间的"共同语言"。</div>
+    </div>
+  </div>
+
+  <h3 style="font-size:15px;color:var(--text-2);margin:28px 0 12px;font-weight:600;">本质：给 AI 安装项目长期记忆</h3>
+  <p style="font-size:13px;color:var(--text-2);margin-bottom:16px;">知识库的作用类似于给 AI 装上了关于你项目的"大脑"，分为两层记忆：</p>
+
+  <div class="card-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 16px;">
+    <div class="card" style="border-left: 3px solid var(--brand);">
+      <div class="card-title" style="color:var(--brand);">CLAUDE.md = 入职培训手册</div>
+      <div class="card-text">告诉 AI "我们用什么技术、有什么规矩、哪些事不能做"。每次对话自动加载，确保 AI 不犯低级错误。</div>
+    </div>
+    <div class="card" style="border-left: 3px solid var(--purple);">
+      <div class="card-title" style="color:var(--purple);">积木 + 服务档案 = 业务长期记忆</div>
+      <div class="card-text">告诉 AI "具体业务怎么跑、代码在哪、谁调谁、数据怎么流"。AI 按需检索，不用每次全部加载。</div>
+    </div>
+  </div>
+
+  <div class="highlight-box">
+    <p style="margin-bottom:8px;"><strong>比普通 AI 记忆更强在哪？</strong></p>
+    <p><strong>版本化</strong> — 跟代码一起 git commit，代码改了知识库也改，永远不会过时<br>
+    <strong>结构化</strong> — 有 frontmatter、时序图、代码锚点，AI 能高效检索而非翻找碎片<br>
+    <strong>共享的</strong> — 不绑定某个人的对话历史，团队所有人、所有 AI 工具共用一份<br>
+    <strong>可审计</strong> — 谁改了什么、为什么改，git log 一清二楚</p>
+  </div>
+
+  <h3 style="font-size:15px;color:var(--text-2);margin:28px 0 12px;font-weight:600;">实战案例：知识库如何驱动 AI 编码</h3>
+  <p style="font-size:13px;color:var(--text-2);margin-bottom:16px;">以下两个真实场景展示 AI 如何利用知识库，从一句需求直接产出可合并的代码。</p>
+
+  <div class="scenario-tabs" id="what-scenario-tabs">
+    <div class="scenario-tab active" data-ws="activity">案例一：新增订单状态</div>
+    <div class="scenario-tab" data-ws="login">案例二：优化下单耗时</div>
+  </div>
+
+  <!-- 案例1：新增订单状态 SHIPPING -->
+  <div class="scenario-panel active" data-wsp="activity">
+    <div class="highlight-box">
+      <p><strong>你的指令：</strong>"给订单加一个 SHIPPING 配送中状态，支付成功后自动流转"</p>
+    </div>
+
+    <div class="compare-split">
+      <div class="compare-col compare-col--with">
+        <div class="compare-header compare-header--with">完整知识库（积木 + 服务档案）</div>
+        <div class="compare-meta"><span class="meta-tag meta-tag--green">1 轮对话</span><span class="meta-tag meta-tag--green">~5 分钟</span><span class="meta-tag meta-tag--green">首版即可用</span></div>
+        <div class="step-list">
+          <div class="step-item">
+            <div class="step-title">定位积木索引</div>
+            <div class="step-desc">AI 进入 <code>_index.md</code> 搜索"订单"，命中 order_create.md / order_pay.md / order_refund.md 三个核心积木</div>
+          </div>
+          <div class="step-item">
+            <div class="step-title">获得完整业务流程</div>
+            <div class="step-desc">order_pay 时序图告诉 AI：支付回调里的 8 步流转都涉及哪个状态切换；references/enums.md 列出现有所有 OrderStatus 枚举值。</div>
+          </div>
+          <div class="step-item">
+            <div class="step-title">服务档案确认细节</div>
+            <div class="step-desc">order-service.md 标明订单表写入方仅有 order-service，不会有别的服务直写状态字段。</div>
+          </div>
+          <div class="step-item">
+            <div class="step-title">直接生成完整代码</div>
+            <div class="step-desc">枚举 + 状态机校验 + order_pay 积木里 step 5 之后的状态流转、order_refund 积木里允许退款的状态校验，全部一次到位。</div>
+          </div>
+        </div>
+      </div>
+      <div class="compare-col compare-col--partial">
+        <div class="compare-header compare-header--partial">仅项目说明（CLAUDE.md）</div>
+        <div class="compare-meta"><span class="meta-tag meta-tag--yellow">2-3 轮对话</span><span class="meta-tag meta-tag--yellow">~15 分钟</span><span class="meta-tag meta-tag--yellow">规范对但细节缺</span></div>
+        <div class="chat-simulation">
+          <div class="chat-bubble chat-user">给订单加一个 SHIPPING 配送中状态</div>
+          <div class="chat-bubble chat-ai">我知道项目用 Java + Spring Cloud + BFF。订单状态应该在 order-service 的 OrderStatus 枚举里。但我需要确认：现有有哪些状态？支付回调流程里在哪一步切换状态？</div>
+          <div class="chat-bubble chat-user">现有 PENDING_PAY / PAID / CANCELLED / REFUNDED，支付回调在 PaymentService.onPaySuccess</div>
+          <div class="chat-bubble chat-ai">退款的 status 校验放在哪个方法？是否影响其他服务？</div>
+          <div class="chat-bubble chat-user">RefundService.applyRefund 里校验 status=PAID</div>
+          <div class="chat-bubble chat-ai">（开始写代码）<br>✅ 枚举位置正确<br>✅ 状态机校验加上了<br>⚠️ 但不知道 order_refund 现在允许哪些状态退款<br>⚠️ 不知道是否要发 MQ 通知</div>
+        </div>
+      </div>
+      <div class="compare-col compare-col--without">
+        <div class="compare-header compare-header--without">无任何配置</div>
+        <div class="compare-meta"><span class="meta-tag meta-tag--red">5-8 轮对话</span><span class="meta-tag meta-tag--red">30-60 分钟</span><span class="meta-tag meta-tag--red">多次返工</span></div>
+        <div class="chat-simulation">
+          <div class="chat-bubble chat-user">给订单加一个 SHIPPING 配送中状态</div>
+          <div class="chat-bubble chat-ai">请问用什么技术栈？订单状态怎么定义？</div>
+          <div class="chat-bubble chat-user">Spring Boot + Spring Cloud，Java，order-service 里有 OrderStatus</div>
+          <div class="chat-bubble chat-ai">现有有哪些状态？支付成功后是怎么流转的？</div>
+          <div class="chat-bubble chat-user">PENDING_PAY → PAID → CANCELLED/REFUNDED</div>
+          <div class="chat-bubble chat-ai">支付回调在哪？</div>
+          <div class="chat-bubble chat-user">PaymentService.onPaySuccess</div>
+          <div class="chat-bubble chat-ai chat-ai--error">（写代码）<br>❌ 把状态切换写在 OrderController<br>❌ 没考虑退款时的状态校验<br>❌ 没发 MQ 通知</div>
+          <div class="chat-bubble chat-user">（逐条纠正...）</div>
+          <div class="chat-bubble chat-ai chat-ai--error">（第二版）<br>❌ 退款流程的允许状态忘记加 SHIPPING</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 案例2：优化下单耗时 -->
+  <div class="scenario-panel" data-wsp="login">
+    <div class="highlight-box">
+      <p><strong>你的指令：</strong>"下单接口太慢了（P99 ~ 800ms），帮我优化一下"</p>
+    </div>
+
+    <div class="compare-split">
+      <div class="compare-col compare-col--with">
+        <div class="compare-header compare-header--with">完整知识库（积木 + 服务档案）</div>
+        <div class="compare-meta"><span class="meta-tag meta-tag--green">1 轮对话</span><span class="meta-tag meta-tag--green">~5 分钟</span><span class="meta-tag meta-tag--green">精准到行号</span></div>
+        <div class="step-list">
+          <div class="step-item">
+            <div class="step-title">定位下单积木</div>
+            <div class="step-desc">搜索"下单"命中 <code>order_create.md</code>，时序图揭示完整链路：校验会员 → 批量查商品 → 锁库存 → 锁券，4 次 Feign 串行。</div>
+          </div>
+          <div class="step-item">
+            <div class="step-title">代码锚点直达源码</div>
+            <div class="step-desc">积木标注 <code>OrderService.createOrder</code>，AI 直接打开方法发现：会员校验和商品查询可以并行；锁库存与锁券有 try-compensate 依赖必须串行。</div>
+          </div>
+          <div class="step-item">
+            <div class="step-title">服务档案揭示优化空间</div>
+            <div class="step-desc">product-service.md 提到批量查询接口；member-service 的 get 接口可缓存。瓶颈清晰。</div>
+          </div>
+          <div class="step-item">
+            <div class="step-title">输出三个具体方案 + 代码</div>
+            <div class="step-desc">① 校验会员 + 查商品并行（CompletableFuture）省 ~150ms ② 会员等级缓存命中省 ~80ms ③ 库存锁与券锁保持串行（一致性边界）。每个方案附完整代码。</div>
+          </div>
+        </div>
+      </div>
+      <div class="compare-col compare-col--partial">
+        <div class="compare-header compare-header--partial">仅项目说明（CLAUDE.md）</div>
+        <div class="compare-meta"><span class="meta-tag meta-tag--yellow">3-4 轮对话</span><span class="meta-tag meta-tag--yellow">~20 分钟</span><span class="meta-tag meta-tag--yellow">方向对但不精准</span></div>
+        <div class="chat-simulation">
+          <div class="chat-bubble chat-user">下单接口太慢了，优化一下</div>
+          <div class="chat-bubble chat-ai">我知道下单在 order-service。但我需要看具体代码——下单入口是哪个 Controller？</div>
+          <div class="chat-bubble chat-user">OrderService.createOrder</div>
+          <div class="chat-bubble chat-ai">能贴一下这个方法的代码吗？我需要看具体调用链。</div>
+          <div class="chat-bubble chat-user">（贴代码 ~80 行）</div>
+          <div class="chat-bubble chat-ai">看到 4 次串行调用。哪些步骤之间有强依赖？锁库存和锁券的顺序能否调整？</div>
+          <div class="chat-bubble chat-user">锁券失败要补偿释放库存，所以必须先锁库存再锁券</div>
+          <div class="chat-bubble chat-ai">（输出方案）<br>✅ 方向正确：前两步并行 + 缓存<br>⚠️ 不知道现有缓存 key 命名<br>⚠️ 不确定线程池配置</div>
+        </div>
+      </div>
+      <div class="compare-col compare-col--without">
+        <div class="compare-header compare-header--without">无任何配置</div>
+        <div class="compare-meta"><span class="meta-tag meta-tag--red">6-10 轮对话</span><span class="meta-tag meta-tag--red">30-60 分钟</span><span class="meta-tag meta-tag--red">方案不落地</span></div>
+        <div class="chat-simulation">
+          <div class="chat-bubble chat-user">下单接口太慢了，优化一下</div>
+          <div class="chat-bubble chat-ai">下单代码在哪个文件？涉及哪些下游服务？</div>
+          <div class="chat-bubble chat-user">order-service 的 OrderService.createOrder</div>
+          <div class="chat-bubble chat-ai">能把代码贴给我看看吗？</div>
+          <div class="chat-bubble chat-user">（贴 200+ 行代码）</div>
+          <div class="chat-bubble chat-ai">几个 Feign 客户端的接口能看一下吗？</div>
+          <div class="chat-bubble chat-user">（又贴几个服务的代码）</div>
+          <div class="chat-bubble chat-ai chat-ai--error">方案：<br>❌ 把锁库存和锁券改并行（破坏一致性）<br>❌ 引入新缓存框架（项目用现有方案）<br>❌ 不知道已有批量查询接口</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 总结对比表 -->
+  <h3 style="font-size:15px;color:var(--text-2);margin:28px 0 12px;font-weight:600;">三种模式核心差异</h3>
+  <table class="compare-table">
+    <thead>
+      <tr><th>维度</th><th style="color:var(--green);">完整知识库</th><th style="color:var(--orange);">仅项目说明</th><th style="color:#DC2626;">无任何配置</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>对话轮次</td><td style="color:var(--green);font-weight:500;">1 轮</td><td style="color:var(--orange);font-weight:500;">2-4 轮</td><td style="color:#DC2626;font-weight:500;">5-10 轮</td></tr>
+      <tr><td>时间成本</td><td style="color:var(--green);font-weight:500;">~5 分钟</td><td style="color:var(--orange);font-weight:500;">15-20 分钟</td><td style="color:#DC2626;font-weight:500;">30-60 分钟</td></tr>
+      <tr><td>规范遵守</td><td>自动遵守全部规范</td><td>遵守已声明的规范</td><td>频繁违反，需人工纠正</td></tr>
+      <tr><td>业务理解</td><td>知道现有实现和扩展模式</td><td>知道架构边界，不知道具体实现</td><td>一无所知，全靠你喂</td></tr>
+      <tr><td>代码精度</td><td>包路径、表名、枚举位置全对</td><td>分层正确，细节靠猜</td><td>基本靠猜，多次返工</td></tr>
+      <tr><td>你的角色</td><td>Review 业务细节</td><td>补充业务上下文</td><td>当"人肉文档"</td></tr>
+      <tr><td>AI 角色</td><td>熟悉项目的老员工</td><td>读过入职手册的新人</td><td>第一天的实习生</td></tr>
+    </tbody>
+  </table>
+  <div class="highlight-box" style="margin-top:16px;">
+    <p><strong>关键洞察：</strong>仅有项目说明（CLAUDE.md）解决了<strong>"规范遵守"</strong>问题——AI 不会再犯 Java 版本、分层违规这类低级错误。但它仍然不知道<strong>"具体业务怎么做"</strong>——哪些接口已经存在、数据怎么流转、异步消息怎么走。积木补齐的正是这一层：让 AI 从"知道规矩"升级到"熟悉业务"。</p>
+  </div>
+</section>
+
+<!-- Section: 为什么 -->
+<section class="section" id="why">
+  <h2 class="section-title"><span class="icon">📈</span> 为什么要用</h2>
+  <p class="section-desc">对领导和开发者分别意味着什么</p>
+
+  <h3 style="font-size:15px;color:var(--text-2);margin-bottom:16px;font-weight:600;">管理视角</h3>
+  <div class="card-grid">
+    <div class="card value-card">
+      <div class="value-number">3-5x</div>
+      <div class="card-title">开发效率提升</div>
+      <div class="card-text">新功能开发从需求到代码的时间大幅缩短，AI 能直接生成符合项目规范的代码骨架</div>
+    </div>
+    <div class="card value-card purple">
+      <div class="value-number">↓70%</div>
+      <div class="card-title">新人上手时间</div>
+      <div class="card-text">知识库即文档，新成员通过阅读积木快速理解业务全貌，不再依赖口口相传</div>
+    </div>
+    <div class="card value-card green">
+      <div class="value-number">零流失</div>
+      <div class="card-title">知识资产沉淀</div>
+      <div class="card-text">核心业务逻辑、设计决策、异常处理经验全部版本化存储，人员变动不影响项目延续</div>
+    </div>
+    <div class="card value-card orange">
+      <div class="value-number">↓50%</div>
+      <div class="card-title">低级 Bug 率</div>
+      <div class="card-text">AI 生成代码时自动遵循编码规范和异常处理模式，减少遗漏和不一致</div>
+    </div>
+  </div>
+
+  <h3 style="font-size:15px;color:var(--text-2);margin:24px 0 16px;font-weight:600;">开发者视角</h3>
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-title">告别重复劳动</div>
+      <div class="card-text">CRUD、参数校验、异常处理等模式化代码由 AI 生成，你只需 review 和调整</div>
+    </div>
+    <div class="card">
+      <div class="card-title">上下文不丢失</div>
+      <div class="card-text">不用每次都给 AI 解释项目背景，知识库提供持久化的项目上下文</div>
+    </div>
+    <div class="card">
+      <div class="card-title">学习加速器</div>
+      <div class="card-text">通过阅读其他模块的积木，快速理解不熟悉的业务领域和技术实现</div>
+    </div>
+  </div>
+</section>
+
+<!-- Section: 知识库结构 -->
+<section class="section" id="structure">
+  <h2 class="section-title"><span class="icon">📁</span> 知识库结构</h2>
+  <p class="section-desc">一个 .ai 文件夹，四类核心文件，覆盖项目的方方面面</p>
+
+  <div class="file-tree">
+    <span class="dir">.ai/</span><br>
+    ├── <span class="file">OVERVIEW.md</span> <span class="comment"># 项目全景：技术栈、服务拓扑、部署架构</span><br>
+    ├── <span class="file">conventions.md</span> <span class="comment"># 编码规范：分层约定、命名规则、通用模式</span><br>
+    ├── <span class="file">CHANGELOG.md</span> <span class="comment"># 变更记录：积木新增/修改历史</span><br>
+    ├── <span class="dir">blocks/</span> <span class="comment"># 功能积木（核心）</span><br>
+    │   ├── <span class="file">_index.md</span> <span class="comment"># 积木索引与分组</span><br>
+    │   ├── <span class="file">_template.md</span> <span class="comment"># 新积木模板</span><br>
+    │   ├── <span class="file">order_create.md</span> <span class="comment"># 示例：创建订单</span><br>
+    │   ├── <span class="file">order_pay.md</span> <span class="comment"># 示例：订单支付</span><br>
+    │   └── <span class="file">...</span> <span class="comment"># 每个完整业务流程一个文件</span><br>
+    └── <span class="dir">services/</span> <span class="comment"># 服务说明</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;├── <span class="file">mini-server.md</span> <span class="comment"># BFF 层服务职责与接口</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;├── <span class="file">order-service.md</span> <span class="comment"># 核心业务服务</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;└── <span class="file">...</span><br>
+  </div>
+
+  <div class="highlight-box" style="margin-top:20px;">
+    <p><strong>关键设计原则：</strong>知识库跟随代码仓库版本管理，与代码同步演进。每次业务变更同步更新对应积木，保证知识库始终是"活"的。</p>
+  </div>
+
+  <h3 style="font-size:15px;color:var(--text-2);margin:24px 0 12px;font-weight:600;">积木文件结构</h3>
+  <div class="file-tree">
+    <span class="comment">---</span><br>
+    <span class="comment">id: order_create</span><br>
+    <span class="comment">name: 创建订单</span><br>
+    <span class="comment">owner: order-team</span><br>
+    <span class="comment">services: [mini-server, order-service, member-service, product-service, promotion-service]</span><br>
+    <span class="comment">triggers: POST /api/mini/order</span><br>
+    <span class="comment">status: stable</span><br>
+    <span class="comment">---</span><br><br>
+    <span class="dir">## 时序图</span><br>
+    <span class="file">```mermaid</span><br>
+    sequenceDiagram<br>
+    &nbsp;&nbsp;participant C as 小程序<br>
+    &nbsp;&nbsp;participant M as mini-server<br>
+    &nbsp;&nbsp;participant O as order-service<br>
+    &nbsp;&nbsp;participant DB as MySQL<br>
+    &nbsp;&nbsp;C->>M: POST /api/mini/order<br>
+    &nbsp;&nbsp;M->>O: Feign 调用创建接口<br>
+    &nbsp;&nbsp;O->>DB: INSERT order<br>
+    <span class="file">```</span><br><br>
+    <span class="dir">## 关键节点</span> <span class="comment"># 每步的业务逻辑说明</span><br>
+    <span class="dir">## 异常路径</span> <span class="comment"># 表格：场景 | 处理 | 返回</span><br>
+    <span class="dir">## 特殊说明</span> <span class="comment"># 设计决策、注意事项</span><br>
+  </div>
+</section>
+
+<!-- Section: 业务场景 -->
+<section class="section" id="scenarios">
+  <h2 class="section-title"><span class="icon">🔧</span> 业务场景实战</h2>
+  <p class="section-desc">不同开发场景下，如何配合 AI 和知识库高效工作</p>
+
+  <div class="scenario-tabs" id="scenario-tabs">
+    <div class="scenario-tab active" data-s="new">新增模块</div>
+    <div class="scenario-tab" data-s="bug">修复 Bug</div>
+    <div class="scenario-tab" data-s="optimize">优化代码</div>
+    <div class="scenario-tab" data-s="refactor">重构代码</div>
+  </div>
+
+  <!-- 新增模块 -->
+  <div class="scenario-panel active" data-sp="new">
+    <div class="highlight-box">
+      <p><strong>场景：</strong>需要新增一个"会员积分兑换"模块，涉及 mini-server → member-service → order-service 的跨服务调用。</p>
+    </div>
+    <div class="step-list">
+      <div class="step-item">
+        <div class="step-title">参考已有积木，理解项目模式</div>
+        <div class="step-desc">阅读 .ai/blocks/ 中类似的积木（如 order_create），了解跨服务调用的标准模式、异常处理方式、事务边界划分。</div>
+      </div>
+      <div class="step-item">
+        <div class="step-title">编写新积木文档</div>
+        <div class="step-desc">用 vibe-blocks 一键生成积木骨架，填写 frontmatter、画时序图、列出关键节点和异常路径。这一步是"设计"，由开发者完成。</div>
+        <div class="step-cmd">vibe-blocks new points_exchange --group 会员</div>
+      </div>
+      <div class="step-item">
+        <div class="step-title">让 AI 生成代码骨架</div>
+        <div class="step-desc">将积木文档 + conventions.md + 相关 service 文档提供给 AI，让它生成 Controller、Service、DTO、Feign Client 等代码。</div>
+        <div class="step-cmd">Prompt: "根据 .ai/blocks/points_exchange.md 和 .ai/conventions.md，生成积分兑换功能的完整代码，遵循项目分层规范。"</div>
+      </div>
+      <div class="step-item">
+        <div class="step-title">Review 并补充业务细节</div>
+        <div class="step-desc">AI 生成的代码覆盖了标准模式，开发者补充特殊业务逻辑（如积分过期判断、并发扣减等），并更新积木文档。</div>
+      </div>
+      <div class="step-item">
+        <div class="step-title">更新索引和 CHANGELOG</div>
+        <div class="step-desc">vibe-blocks new 已经把积木自动注册到 _index.md；改动则记录到 CHANGELOG.md。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 修复 Bug -->
+  <div class="scenario-panel" data-sp="bug">
+    <div class="highlight-box">
+      <p><strong>场景：</strong>线上反馈"订单支付成功后库存没扣减"，需要定位问题并修复。</p>
+    </div>
+    <div class="step-list">
+      <div class="step-item">
+        <div class="step-title">通过积木定位调用链路</div>
+        <div class="step-desc">打开 .ai/blocks/order_pay.md，查看完整时序图，快速确认涉及哪些服务、哪些表、哪些 MQ 消息。</div>
+      </div>
+      <div class="step-item">
+        <div class="step-title">对照异常路径表排查</div>
+        <div class="step-desc">积木中的"异常路径"表格列出了已知的失败场景和处理方式，对照线上日志快速缩小排查范围。</div>
+      </div>
+      <div class="step-item">
+        <div class="step-title">让 AI 辅助分析</div>
+        <div class="step-desc">将积木文档 + 错误日志提供给 AI，让它基于完整上下文分析可能的原因。</div>
+        <div class="step-cmd">Prompt: "根据 .ai/blocks/order_pay.md 的链路，分析以下错误日志的可能原因：[粘贴日志]"</div>
+      </div>
+      <div class="step-item">
+        <div class="step-title">修复并补充异常路径</div>
+        <div class="step-desc">修复代码后，如果是新发现的异常场景，补充到积木的异常路径表中，避免同类问题再次发生。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 优化代码 -->
+  <div class="scenario-panel" data-sp="optimize">
+    <div class="highlight-box">
+      <p><strong>场景：</strong>商品详情页查询接口响应慢（P99 > 2s），需要性能优化。</p>
+    </div>
+    <div class="step-list">
+      <div class="step-item">
+        <div class="step-title">查看积木了解完整数据流</div>
+        <div class="step-desc">通过 product_browse.md 了解查询涉及的表、关联查询、缓存策略，确认瓶颈可能在哪一层。</div>
+      </div>
+      <div class="step-item">
+        <div class="step-title">参考 conventions.md 中的缓存规范</div>
+        <div class="step-desc">项目规范中定义了 Redis 缓存的 key 命名、过期策略、更新模式（Cache-Aside），确保优化方案符合统一规范。</div>
+      </div>
+      <div class="step-item">
+        <div class="step-title">让 AI 生成优化方案</div>
+        <div class="step-desc">AI 基于积木上下文和规范，生成具体的优化代码（如添加二级缓存、优化 SQL、引入分页）。</div>
+        <div class="step-cmd">Prompt: "根据 .ai/blocks/product_browse.md，这个查询 P99 > 2s，请基于 conventions.md 的缓存规范给出优化方案和代码。"</div>
+      </div>
+      <div class="step-item">
+        <div class="step-title">更新积木中的性能相关说明</div>
+        <div class="step-desc">在积木的"特殊说明"中记录优化策略（如"详情页走 Redis 缓存，商品变更时主动失效"），供后续维护参考。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 重构代码 -->
+  <div class="scenario-panel" data-sp="refactor">
+    <div class="highlight-box">
+      <p><strong>场景：</strong>order-service 中"退款"逻辑过于臃肿，需要拆分为独立的 refund-service。</p>
+    </div>
+    <div class="step-list">
+      <div class="step-item">
+        <div class="step-title">通过积木索引评估影响范围</div>
+        <div class="step-desc">在 _index.md 中筛选所有 services 字段含 order-service 且与退款相关的积木，明确哪些功能需要迁移。</div>
+      </div>
+      <div class="step-item">
+        <div class="step-title">梳理服务依赖关系</div>
+        <div class="step-desc">每个积木的 services 字段标明了涉及的服务，快速画出依赖图，确认拆分边界和影响面。</div>
+      </div>
+      <div class="step-item">
+        <div class="step-title">让 AI 生成迁移计划</div>
+        <div class="step-desc">将相关积木和服务文档提供给 AI，让它生成分步迁移方案，包括接口兼容、数据迁移、灰度策略。</div>
+        <div class="step-cmd">Prompt: "以下积木需要从 order-service 迁移到新的 refund-service，请生成迁移计划：[积木列表]"</div>
+      </div>
+      <div class="step-item">
+        <div class="step-title">逐步迁移并同步更新知识库</div>
+        <div class="step-desc">每迁移一个积木，同步更新其 services 字段，新增 refund-service.md 服务文档。知识库始终反映当前架构。</div>
+      </div>
+      <div class="step-item">
+        <div class="step-title">验证完整性</div>
+        <div class="step-desc">迁移完成后，通过积木的时序图验证调用链路是否正确，确保没有遗漏的依赖。</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Section: 对比 -->
+<section class="section" id="compare">
+  <h2 class="section-title"><span class="icon">⚖️</span> 传统开发 vs Vibe Coding</h2>
+  <p class="section-desc">同样的工作，不同的效率和质量</p>
+
+  <table class="compare-table">
+    <thead>
+      <tr><th>维度</th><th>传统方式</th><th>Vibe Coding</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>新人了解业务</td><td>问同事、翻代码、看零散文档，1-2 周</td><td>阅读积木索引和时序图，2-3 天</td></tr>
+      <tr><td>新功能开发</td><td>从零写代码，反复对齐规范</td><td>AI 基于积木生成骨架，开发者补充业务细节</td></tr>
+      <tr><td>Bug 排查</td><td>凭经验猜测，逐层 debug</td><td>积木提供完整链路图，异常表缩小范围</td></tr>
+      <tr><td>知识传承</td><td>口口相传，人走知识散</td><td>版本化存储，与代码同步演进</td></tr>
+      <tr><td>代码一致性</td><td>靠 Code Review 人工把关</td><td>AI 自动遵循 conventions.md 规范</td></tr>
+      <tr><td>重构评估</td><td>全局搜索 + 人工梳理依赖</td><td>积木 services 字段直接标明影响范围</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- Section: 快速开始 -->
+<section class="section" id="start">
+  <h2 class="section-title"><span class="icon">🚀</span> 快速开始</h2>
+  <p class="section-desc">用 vibe-blocks CLI 四个一键命令，5 分钟把积木体系接入你的项目</p>
+
+  <div class="step-list">
+    <div class="step-item">
+      <div class="step-title">① 安装 vibe-blocks</div>
+      <div class="step-desc">用 pip 安装命令行工具，仅依赖 Python 3.8+ 和 click，零额外依赖。</div>
+      <div class="step-cmd">pip install vibe-blocks</div>
+    </div>
+    <div class="step-item">
+      <div class="step-title">② 一键初始化 .ai/ 目录</div>
+      <div class="step-desc">自动生成 <code>.ai/{blocks,services,references,decisions,prompts}</code> 目录、<code>CLAUDE.md</code>、<code>OVERVIEW.md</code>、<code>conventions.md</code>、积木模板与索引。新项目从此具备 AI 编码上下文。</div>
+      <div class="step-cmd">cd your-project && vibe-blocks init</div>
+    </div>
+    <div class="step-item">
+      <div class="step-title">③ 一键创建第一个积木</div>
+      <div class="step-desc">从内置模板生成新积木文件，自动注册到 <code>_index.md</code> 对应分组。开发者只需填写时序图和处理步骤。</div>
+      <div class="step-cmd">vibe-blocks new order_create --name "创建订单" --services mini-server,order-service --group 订单</div>
+    </div>
+    <div class="step-item">
+      <div class="step-title">④ 一键生成可视化网页</div>
+      <div class="step-desc">解析所有积木 → 输出独立 HTML（自动推导服务拓扑 + 渲染 Mermaid 时序图），可直接在浏览器打开或部署到 GitHub Pages。</div>
+      <div class="step-cmd">vibe-blocks build --output ./project-blocks.html</div>
+    </div>
+    <div class="step-item">
+      <div class="step-title">⑤ 一键刷新 CLAUDE.md</div>
+      <div class="step-desc">扫描项目结构识别技术栈（Java/Maven、Node/npm、Go、Python 等），把最新积木索引注入根目录 <code>CLAUDE.md</code>，让 Claude / Cursor 等 AI 助手自动加载完整业务上下文。</div>
+      <div class="step-cmd">vibe-blocks claude-md</div>
+    </div>
+  </div>
+
+  <div class="highlight-box" style="margin-top:24px;">
+    <p><strong>渐进式采用：</strong>不需要停下手头工作专门补文档。日常开发新功能时跑一次 <code>vibe-blocks new</code>，改 Bug 时补充异常路径，定期跑 <code>vibe-blocks build</code> 同步可视化。2-3 个迭代后知识库就能覆盖核心业务。</p>
+    <p style="margin-top:8px;"><strong>团队协作：</strong>把 <code>.ai/</code> 目录纳入 Git 版本控制，PR 模板加入"积木更新检查项"，每次代码改动同步更新对应积木。AI 永远拿到最新上下文。</p>
+  </div>
+</section>
+
+</div>
+
+<div class="footer">
+  Vibe Coding 体系 · vibe-blocks · MIT License
+</div>
+
+<script>
+// Nav scroll highlight
+const sections = document.querySelectorAll('.section');
+const navLinks = document.querySelectorAll('.nav a');
+
+window.addEventListener('scroll', () => {
+  let current = '';
+  sections.forEach(s => {
+    if (window.scrollY >= s.offsetTop - 100) current = s.id;
+  });
+  navLinks.forEach(a => {
+    a.classList.remove('active');
+    if (a.getAttribute('href') === '#' + current) a.classList.add('active');
+  });
+});
+
+// Scenario tabs
+document.getElementById('scenario-tabs').addEventListener('click', e => {
+  const tab = e.target.closest('.scenario-tab');
+  if (!tab) return;
+  const s = tab.dataset.s;
+  document.querySelectorAll('#scenario-tabs .scenario-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('[data-sp]').forEach(p => p.classList.remove('active'));
+  tab.classList.add('active');
+  document.querySelector(`[data-sp="${s}"]`).classList.add('active');
+});
+
+// What section scenario tabs
+document.getElementById('what-scenario-tabs').addEventListener('click', e => {
+  const tab = e.target.closest('.scenario-tab');
+  if (!tab) return;
+  const ws = tab.dataset.ws;
+  document.querySelectorAll('#what-scenario-tabs .scenario-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('[data-wsp]').forEach(p => p.classList.remove('active'));
+  tab.classList.add('active');
+  document.querySelector(`[data-wsp="${ws}"]`).classList.add('active');
+});
+</script>
+</body>
+</html>

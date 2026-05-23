@@ -1,0 +1,72 @@
+---
+id: {flow_id}
+name: {流程中文名}
+owner: {负责团队}
+status: draft
+last_modified: {YYYY-MM-DD}
+services: [{参与的服务列表}]
+triggers: {触发方式，如 POST /api/xxx}
+related_mr: {最近相关MR}
+---
+
+## 流程总览
+
+```mermaid
+sequenceDiagram
+    participant C as {触发方}
+    participant A as {服务A}
+    participant B as {服务B}
+    participant DB as Database
+
+    C->>A: {请求}
+    A->>A: {本地处理}
+    A->>B: {调用方式: 接口名}
+    B->>DB: {数据操作}
+    B-->>A: {响应}
+    A-->>C: {最终响应}
+```
+
+> **异步调用规范**：如有 MQ 等异步调用，需声明 `participant MQ as MQ`，
+> 并用 `rect rgb(255, 230, 150)` 包裹异步消息发送行（橙色高亮）。
+
+## 节点逻辑
+
+### {服务A} — {角色描述}
+
+**入口**：`{ClassName}#{methodName}`
+**锚点**：`{模块}/src/main/.../{ClassName}.{ext}#{method}`
+
+处理步骤：
+1. {步骤1}
+2. {步骤2}
+3. {步骤3}
+
+**依赖服务**：
+- `{Client}`（→ {目标服务}）
+
+---
+
+### {服务B} — {角色描述}
+
+**入口**：`{ClassName}#{methodName}`
+**锚点**：`{模块}/src/main/.../{ClassName}.{ext}#{method}`
+
+**事务**：`@Transactional`（如有）
+
+处理步骤：
+1. {步骤1}
+2. {步骤2}
+
+**写表**：{涉及的数据库表}
+**发事件**：{发布的消息/事件，如无写"无"}
+
+## 异常路径
+
+| 场景 | 处理 | 返回 |
+|------|------|------|
+| {异常场景1} | {处理方式} | {返回信息} |
+| {异常场景2} | {处理方式} | {返回信息} |
+
+## 变更记录
+
+- {YYYY-MM-DD}: {变更说明}（{MR号}）

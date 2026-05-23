@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>fresh-mart — 架构积木</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.0/mermaid.min.js"></script>
+<script>
+// vibe-blocks build 自动生成，请勿手动编辑
+// 积木数量: 8 | 分组: 4
+
+const BLOCKS_DATA = {
+  "会员": [
+    {
+      "id": "member_register",
+      "name": "会员注册",
+      "owner": "member-team",
+      "status": "stable",
+      "last_modified": "2026-05-23",
+      "services": [
+        "mini-server",
+        "member-service",
+        "数据库",
+        "消息队列"
+      ],
+      "trigger": "POST /api/mini/register",
+      "hasMQ": true,
+      "steps": [
+        "小程序→mini-server: POST /api/mini/register",
+        "mini-server→member-service: Feign: POST /v1/member/register",
+        "[member-service] 手机号唯一性校验",
+        "member-service→MySQL: INSERT INTO member",
+        "member-service→MQ: 发送 member.registered",
+        "member-service→mini-server: member_id",
+        "mini-server→小程序: 200 BaseResponse(member_id)",
+        "MQ→promotion-service: 消费 member.registered",
+        "[promotion-service] 发放新人券"
+      ],
+      "mermaid": "sequenceDiagram\n    participant C as 小程序\n    participant M as mini-server\n    participant U as member-service\n    participant DB as MySQL\n    participant MQ as MQ\n    participant P as promotion-service\n\n    C->>M: POST /api/mini/register\n    M->>U: Feign: POST /v1/member/register\n    U->>U: 手机号唯一性校验\n    U->>DB: INSERT INTO member\n    rect rgb(255, 230, 150)\n        U->>MQ: 发送 member.registered\n    end\n    U-->>M: member_id\n    M-->>C: 200 BaseResponse(member_id)\n    MQ-->>P: 消费 member.registered\n    P->>P: 发放新人券",
+      "errors": [
+        [
+          "手机号已注册",
+          "抛 ServiceException",
+          "\"手机号已注册\""
+        ],
+        [
+          "数据库异常",
+          "事务回滚",
+          "\"系统繁忙，请重试\""
+        ],
+        [
+          "MQ 发送失败",
+          "不影响注册（事务已提交）",
+          "后台告警"
+        ]
+      ],
+      "note": "",
+      "writes": [
+        "member"
+      ]
+    },
+    {
+      "id": "member_level_upgrade",
+      "name": "会员等级自动升级",
+      "owner": "member-team",
+      "status": "stable",
+      "last_modified": "2026-05-23",
+      "services": [
+        "member-service",
+        "数据库",
+        "消息队列"
+      ],
+      "trigger": "内部触发（订单完成返积分时检查）",
+      "hasMQ": true,
+      "steps": [
+        "order-service→member-service: Feign: POST /v1/member/points/add",
+        "member-service→MySQL: SELECT member FOR UPDATE",
+        "member-service→MySQL: UPDATE member SET points += earned",
+        "[member-service] checkLevelUpgrade",
+        "member-service→MySQL: UPDATE member SET level = newLevel",
+        "member-service→MQ: 发送 member.level.upgraded",
+        "member-service→order-service: 200"
+      ],
+      "mermaid": "sequenceDiagram\n    participant O as order-service\n    participant U as member-service\n    participant DB as MySQL\n    participant MQ as MQ\n\n    Note over O: 订单完成后调用\n    O->>U: Feign: POST /v1/member/points/add\n    U->>DB: SELECT member FOR UPDATE\n    U->>DB: UPDATE member SET points += earned\n    U->>U: checkLevelUpgrade\n    alt 等级有变化\n        U->>DB: UPDATE member SET level = newLevel\n        rect rgb(255, 230, 150)\n            U->>MQ: 发送 member.level.upgraded\n        end\n    end\n    U-->>O: 200",
+      "errors": [
+        [
+          "会员不存在",
+          "抛 ServiceException",
+          "\"会员不存在\""
+        ],
+        [
+          "MQ 发送失败",
+          "不影响主事务（事件丢失，可由对账补偿）",
+          "后台告警"
+        ]
+      ],
+      "note": "升级**只升不降**——本积木不处理降级。降级由独立的定时任务积木处理（待实现）。",
+      "writes": [
+        "member",
+        "points_log"
+      ]
+    }
+  ],
+  "商品": [
+    {
+      "id": "product_browse",
+      "name": "商品列表/详情浏览",
+      "owner": "product-team",
+      "status": "stable",
+      "last_modified": "2026-05-23",
+      "services": [
+        "mini-server",
+        "product-service",
+        "promotion-service",
+        "数据库"
+      ],
+      "trigger": "GET /api/mini/products, GET /api/mini/product/{id}",
+      "hasMQ": false,
+      "steps": [
+        "小程序→mini-server: GET /api/mini/product/{id}",
+        "mini-server→product-service: Feign: GET /v1/product/{id}",
+        "product-service→MySQL: SELECT product",
+        "product-service→mini-server: ProductDTO",
+        "mini-server→promotion-service: Feign: 查商品当前活动",
+        "promotion-service→mini-server: List<ActivityDTO>",
+        "mini-server→promotion-service: Feign: 查我的可用券",
+        "promotion-service→mini-server: List<CouponDTO>",
+        "[mini-server] 聚合为 ProductDetailVO",
+        "mini-server→小程序: 200 ProductDetailVO"
+      ],
+      "mermaid": "sequenceDiagram\n    participant C as 小程序\n    participant M as mini-server\n    participant P as product-service\n    participant Pr as promotion-service\n    participant DB as MySQL\n\n    C->>M: GET /api/mini/product/{id}\n    M->>P: Feign: GET /v1/product/{id}\n    P->>DB: SELECT product\n    P-->>M: ProductDTO\n    M->>Pr: Feign: 查商品当前活动\n    Pr-->>M: List<ActivityDTO>\n    M->>Pr: Feign: 查我的可用券\n    Pr-->>M: List<CouponDTO>\n    M->>M: 聚合为 ProductDetailVO\n    M-->>C: 200 ProductDetailVO",
+      "errors": [
+        [
+          "商品不存在",
+          "抛 ServiceException",
+          "\"商品不存在\""
+        ],
+        [
+          "活动查询失败",
+          "降级为空数组",
+          "商品基础信息正常返回"
+        ]
+      ],
+      "note": "BFF 层聚合是这条流程的核心，**禁止把\"查活动\"\"查券\"的逻辑下沉到 product-service**——会形成跨域耦合。",
+      "writes": []
+    }
+  ],
+  "营销": [
+    {
+      "id": "coupon_create",
+      "name": "创建优惠券模板",
+      "owner": "promotion-team",
+      "status": "stable",
+      "last_modified": "2026-05-23",
+      "services": [
+        "admin-server",
+        "promotion-service",
+        "数据库",
+        "消息队列"
+      ],
+      "trigger": "POST /sys/coupon/template",
+      "hasMQ": true,
+      "steps": [
+        "运营后台→admin-server: POST /sys/coupon/template",
+        "[admin-server] Shiro 校验 coupon:add",
+        "admin-server→promotion-service: Feign: POST /v1/promotion/coupon/template",
+        "[promotion-service] 名称重复校验",
+        "[promotion-service] 面额合法性校验",
+        "promotion-service→MySQL: INSERT INTO coupon_template",
+        "promotion-service→MQ: 发送 coupon.template.created",
+        "promotion-service→admin-server: template_id",
+        "admin-server→运营后台: 200 BaseResponse(template_id)"
+      ],
+      "mermaid": "sequenceDiagram\n    participant C as 运营后台\n    participant A as admin-server\n    participant P as promotion-service\n    participant DB as MySQL\n    participant MQ as MQ\n\n    C->>A: POST /sys/coupon/template\n    A->>A: Shiro 校验 coupon:add\n    A->>P: Feign: POST /v1/promotion/coupon/template\n    P->>P: 名称重复校验\n    P->>P: 面额合法性校验\n    P->>DB: INSERT INTO coupon_template\n    rect rgb(255, 230, 150)\n        P->>MQ: 发送 coupon.template.created\n    end\n    P-->>A: template_id\n    A-->>C: 200 BaseResponse(template_id)",
+      "errors": [
+        [
+          "券名称已存在",
+          "抛 ServiceException",
+          "\"券名称已存在\""
+        ],
+        [
+          "面额 ≥ 最低使用金额",
+          "抛 ServiceException",
+          "\"券面额不能大于等于最低使用金额\""
+        ],
+        [
+          "有效期非法（开始 > 结束）",
+          "抛 ServiceException",
+          "\"有效期不合法\""
+        ]
+      ],
+      "note": "",
+      "writes": [
+        "coupon_template"
+      ]
+    },
+    {
+      "id": "coupon_receive",
+      "name": "用户领取优惠券",
+      "owner": "promotion-team",
+      "status": "stable",
+      "last_modified": "2026-05-23",
+      "services": [
+        "mini-server",
+        "promotion-service",
+        "member-service",
+        "数据库"
+      ],
+      "trigger": "POST /api/mini/coupon/receive",
+      "hasMQ": false,
+      "steps": [
+        "小程序→mini-server: POST /api/mini/coupon/receive",
+        "mini-server→member-service: Feign: GET /v1/member/{id} 校验会员存在",
+        "member-service→mini-server: MemberDTO",
+        "mini-server→promotion-service: Feign: POST /v1/promotion/coupon/receive",
+        "promotion-service→MySQL: SELECT coupon_template FOR UPDATE",
+        "[promotion-service] 校验：状态/有效期/剩余数量",
+        "[promotion-service] 单人限领校验",
+        "promotion-service→MySQL: UPDATE coupon_template SET remain_count -= 1",
+        "promotion-service→MySQL: INSERT INTO coupon",
+        "promotion-service→mini-server: coupon_id",
+        "mini-server→小程序: 200 BaseResponse(coupon_id)"
+      ],
+      "mermaid": "sequenceDiagram\n    participant C as 小程序\n    participant M as mini-server\n    participant P as promotion-service\n    participant U as member-service\n    participant DB as MySQL\n\n    C->>M: POST /api/mini/coupon/receive\n    M->>U: Feign: GET /v1/member/{id} 校验会员存在\n    U-->>M: MemberDTO\n    M->>P: Feign: POST /v1/promotion/coupon/receive\n    P->>DB: SELECT coupon_template FOR UPDATE\n    P->>P: 校验：状态/有效期/剩余数量\n    P->>P: 单人限领校验\n    P->>DB: UPDATE coupon_template SET remain_count -= 1\n    P->>DB: INSERT INTO coupon\n    P-->>M: coupon_id\n    M-->>C: 200 BaseResponse(coupon_id)",
+      "errors": [
+        [
+          "模板不存在",
+          "抛 ServiceException",
+          "\"券不存在\""
+        ],
+        [
+          "活动未开始/已结束",
+          "抛 ServiceException",
+          "\"活动未开始或已结束\""
+        ],
+        [
+          "已抢光",
+          "抛 ServiceException",
+          "\"券已抢光\""
+        ],
+        [
+          "已达单人领取上限",
+          "抛 ServiceException",
+          "\"已达领取上限\""
+        ],
+        [
+          "会员不存在（mini-server 层）",
+          "抛 ServiceException",
+          "\"会员不存在\""
+        ]
+      ],
+      "note": "findByIdForUpdate 行锁是**防超发的关键**：高并发下不能去掉，否则会出现 remain_count < 0。",
+      "writes": [
+        "coupon_template",
+        "coupon"
+      ]
+    }
+  ],
+  "订单 ⭐ 核心复杂流程": [
+    {
+      "id": "order_create",
+      "name": "创建订单（下单）",
+      "owner": "order-team",
+      "status": "stable",
+      "last_modified": "2026-05-23",
+      "services": [
+        "mini-server",
+        "order-service",
+        "member-service",
+        "product-service",
+        "promotion-service",
+        "数据库",
+        "消息队列"
+      ],
+      "trigger": "POST /api/mini/order",
+      "hasMQ": true,
+      "steps": [
+        "小程序→mini-server: POST /api/mini/order",
+        "mini-server→order-service: Feign: POST /v1/order/create",
+        "order-service→member-service: Feign: GET /v1/member/{id} 校验会员",
+        "member-service→order-service: MemberDTO",
+        "order-service→product-service: Feign: POST /v1/product/batch 批量查商品",
+        "product-service→order-service: List<ProductDTO>",
+        "[order-service] 计算总金额",
+        "order-service→MySQL: INSERT order (status=PENDING_LOCK)",
+        "order-service→product-service: Feign: POST /v1/product/stock/lock 锁库存",
+        "order-service→MySQL: UPDATE order SET status=FAILED",
+        "order-service→mini-server: 400 库存不足",
+        "product-service→order-service: 200",
+        "order-service→promotion-service: Feign: POST /v1/promotion/coupon/lock 锁券",
+        "order-service→product-service: Feign: POST /v1/product/stock/release 补偿：释放库存",
+        "order-service→MySQL: UPDATE order SET status=FAILED",
+        "order-service→mini-server: 400 优惠券不可用",
+        "promotion-service→order-service: CouponLockResult{discountAmount}",
+        "order-service→MySQL: UPDATE order SET discount, payAmount",
+        "order-service→MySQL: UPDATE order SET status=PENDING_PAY",
+        "order-service→MQ: 发延时消息 order.pay.timeout（30 分钟后）",
+        "order-service→mini-server: OrderDTO",
+        "mini-server→小程序: 200 OrderDTO"
+      ],
+      "mermaid": "sequenceDiagram\n    participant C as 小程序\n    participant M as mini-server\n    participant O as order-service\n    participant U as member-service\n    participant P as product-service\n    participant Pr as promotion-service\n    participant DB as MySQL\n    participant MQ as MQ\n\n    C->>M: POST /api/mini/order\n    M->>O: Feign: POST /v1/order/create\n    O->>U: Feign: GET /v1/member/{id} 校验会员\n    U-->>O: MemberDTO\n    O->>P: Feign: POST /v1/product/batch 批量查商品\n    P-->>O: List<ProductDTO>\n    O->>O: 计算总金额\n    O->>DB: INSERT order (status=PENDING_LOCK)\n    O->>P: Feign: POST /v1/product/stock/lock 锁库存\n    alt 库存锁定失败\n        O->>DB: UPDATE order SET status=FAILED\n        O-->>M: 400 库存不足\n    end\n    P-->>O: 200\n    opt 使用了优惠券\n        O->>Pr: Feign: POST /v1/promotion/coupon/lock 锁券\n        alt 券不可用\n            O->>P: Feign: POST /v1/product/stock/release 补偿：释放库存\n            O->>DB: UPDATE order SET status=FAILED\n            O-->>M: 400 优惠券不可用\n        end\n        Pr-->>O: CouponLockResult{discountAmount}\n        O->>DB: UPDATE order SET discount, payAmount\n    end\n    O->>DB: UPDATE order SET status=PENDING_PAY\n    rect rgb(255, 230, 150)\n        O->>MQ: 发延时消息 order.pay.timeout（30 分钟后）\n    end\n    O-->>M: OrderDTO\n    M-->>C: 200 OrderDTO",
+      "errors": [
+        [
+          "会员不存在",
+          "抛 ServiceException",
+          "\"会员不存在\""
+        ],
+        [
+          "商品不存在",
+          "抛 ServiceException",
+          "\"商品不存在\""
+        ],
+        [
+          "**库存不足**",
+          "订单 → FAILED；不需要补偿",
+          "\"商品 X 库存不足\""
+        ],
+        [
+          "**券不可用**（已用/过期/未达门槛）",
+          "**补偿：释放已锁库存**；订单 → FAILED",
+          "\"优惠券不可用：xxx\""
+        ],
+        [
+          "30 分钟未支付",
+          "MQ 触发取消，释放库存与券",
+          "用户重新下单"
+        ]
+      ],
+      "note": "",
+      "writes": [
+        "order",
+        "order_item"
+      ]
+    },
+    {
+      "id": "order_pay",
+      "name": "订单支付",
+      "owner": "order-team",
+      "status": "stable",
+      "last_modified": "2026-05-23",
+      "services": [
+        "mini-server",
+        "order-service",
+        "member-service",
+        "product-service",
+        "promotion-service",
+        "支付平台",
+        "数据库"
+      ],
+      "trigger": "POST /api/mini/order/pay + 微信支付回调 POST /v1/order/pay/callback",
+      "hasMQ": true,
+      "steps": [
+        "小程序→mini-server: POST /api/mini/order/pay",
+        "mini-server→order-service: Feign: POST /v1/order/pay",
+        "order-service→MySQL: SELECT order WHERE status=PENDING_PAY",
+        "order-service→微信支付: 调用预下单接口",
+        "微信支付→order-service: prepayId + 签名参数",
+        "order-service→MySQL: INSERT payment (status=PROCESSING)",
+        "order-service→mini-server: PayDTO(prepayId, signedParams)",
+        "mini-server→小程序: 200 PayDTO",
+        "小程序→微信支付: 调起微信支付",
+        "微信支付→order-service: POST /v1/order/pay/callback",
+        "order-service→MySQL: SELECT payment FOR UPDATE",
+        "[order-service] 幂等检查（已成功直接返回）",
+        "[order-service] 校验签名 + 校验金额",
+        "order-service→MySQL: UPDATE payment SET status=SUCCESS",
+        "order-service→MySQL: UPDATE order SET status=PAID",
+        "order-service→product-service: Feign: POST /v1/product/stock/deduct 真实扣库存",
+        "order-service→member-service: Feign: POST /v1/member/points/deduct",
+        "order-service→promotion-service: Feign: POST /v1/promotion/coupon/use 核销",
+        "order-service→MQ: 发送 order.paid",
+        "order-service→微信支付: 200 OK",
+        "MQ→member-service: 消费 order.paid → 1% 返积分",
+        "[member-service] addPoints + checkLevelUpgrade"
+      ],
+      "mermaid": "sequenceDiagram\n    participant C as 小程序\n    participant M as mini-server\n    participant O as order-service\n    participant W as 微信支付\n    participant DB as MySQL\n\n    C->>M: POST /api/mini/order/pay\n    M->>O: Feign: POST /v1/order/pay\n    O->>DB: SELECT order WHERE status=PENDING_PAY\n    O->>W: 调用预下单接口\n    W-->>O: prepayId + 签名参数\n    O->>DB: INSERT payment (status=PROCESSING)\n    O-->>M: PayDTO(prepayId, signedParams)\n    M-->>C: 200 PayDTO\n    C->>W: 调起微信支付",
+      "errors": [
+        [
+          "订单状态不是 PENDING_PAY",
+          "抛 ServiceException",
+          "\"订单状态不允许支付\""
+        ],
+        [
+          "微信预下单失败",
+          "抛 ServiceException",
+          "微信错误信息"
+        ],
+        [
+          "**回调签名错误**",
+          "抛 ServiceException",
+          "\"签名校验失败\"（不更新任何状态）"
+        ],
+        [
+          "**回调金额不一致**",
+          "抛 ServiceException",
+          "\"金额不一致\"（疑似伪造）"
+        ],
+        [
+          "**重复回调**",
+          "幂等返回",
+          "200 OK"
+        ],
+        [
+          "扣库存失败（不可能，已锁定）",
+          "告警，人工介入",
+          "微信侧标记成功，业务侧异常"
+        ],
+        [
+          "扣积分失败",
+          "重试 3 次，仍失败则降级（积分由对账补）",
+          "不影响支付主流程"
+        ]
+      ],
+      "note": "**为什么扣库存/积分/券放在回调里、不在发起支付时？**",
+      "writes": [
+        "payment"
+      ]
+    },
+    {
+      "id": "order_refund",
+      "name": "订单退款",
+      "owner": "order-team",
+      "status": "stable",
+      "last_modified": "2026-05-23",
+      "services": [
+        "admin-server",
+        "order-service",
+        "member-service",
+        "product-service",
+        "promotion-service",
+        "支付平台",
+        "数据库",
+        "消息队列"
+      ],
+      "trigger": "POST /sys/order/refund",
+      "hasMQ": true,
+      "steps": [
+        "运营后台→admin-server: POST /sys/order/refund",
+        "[admin-server] Shiro 校验 order:refund",
+        "admin-server→order-service: Feign: POST /v1/order/refund",
+        "order-service→MySQL: SELECT order FOR UPDATE",
+        "[order-service] 校验 order.status=PAID 且未已退款",
+        "order-service→MySQL: SELECT payment WHERE status=SUCCESS",
+        "order-service→MySQL: INSERT refund (status=PROCESSING)",
+        "order-service→微信支付: 调用微信退款接口",
+        "order-service→MySQL: UPDATE refund SET status=FAILED",
+        "order-service→admin-server: 400 微信退款失败",
+        "微信支付→order-service: 退款受理成功",
+        "order-service→MySQL: UPDATE order SET status=REFUNDED",
+        "order-service→product-service: Feign: POST /v1/product/stock/refund 退库存",
+        "order-service→member-service: Feign: POST /v1/member/points/refund 退还积分",
+        "order-service→member-service: Feign: POST /v1/member/points/deduct 扣回已返积分",
+        "order-service→promotion-service: Feign: POST /v1/promotion/coupon/refund 退还券",
+        "order-service→MySQL: UPDATE refund SET status=SUCCESS",
+        "order-service→MQ: 发送 order.refunded",
+        "order-service→admin-server: 200",
+        "admin-server→运营后台: 200 BaseResponse"
+      ],
+      "mermaid": "sequenceDiagram\n    participant C as 运营后台\n    participant A as admin-server\n    participant O as order-service\n    participant W as 微信支付\n    participant P as product-service\n    participant U as member-service\n    participant Pr as promotion-service\n    participant DB as MySQL\n    participant MQ as MQ\n\n    C->>A: POST /sys/order/refund\n    A->>A: Shiro 校验 order:refund\n    A->>O: Feign: POST /v1/order/refund\n    O->>DB: SELECT order FOR UPDATE\n    O->>O: 校验 order.status=PAID 且未已退款\n    O->>DB: SELECT payment WHERE status=SUCCESS\n    O->>DB: INSERT refund (status=PROCESSING)\n    O->>W: 调用微信退款接口\n    alt 微信退款失败\n        O->>DB: UPDATE refund SET status=FAILED\n        O-->>A: 400 微信退款失败\n    end\n    W-->>O: 退款受理成功\n    O->>DB: UPDATE order SET status=REFUNDED\n    O->>P: Feign: POST /v1/product/stock/refund 退库存\n    opt 订单使用了积分\n        O->>U: Feign: POST /v1/member/points/refund 退还积分\n    end\n    opt 订单已返积分\n        O->>U: Feign: POST /v1/member/points/deduct 扣回已返积分\n    end\n    opt 订单使用了券\n        O->>Pr: Feign: POST /v1/promotion/coupon/refund 退还券\n    end\n    O->>DB: UPDATE refund SET status=SUCCESS\n    rect rgb(255, 230, 150)\n        O->>MQ: 发送 order.refunded\n    end\n    O-->>A: 200\n    A-->>C: 200 BaseResponse",
+      "errors": [
+        [
+          "订单不存在",
+          "抛 ServiceException",
+          "\"订单不存在\""
+        ],
+        [
+          "订单状态非 PAID",
+          "抛 ServiceException",
+          "\"订单状态不允许退款\""
+        ],
+        [
+          "**重复退款**",
+          "refund 表唯一索引校验",
+          "\"订单已申请退款\""
+        ],
+        [
+          "**微信退款失败**",
+          "refund=FAILED，订单不变",
+          "微信错误信息"
+        ],
+        [
+          "**退库存/积分/券任一失败**",
+          "记录到对账表，人工补偿",
+          "退款主流程已完成"
+        ],
+        [
+          "已返积分 > 当前余额",
+          "允许积分变负，对账补",
+          "不抛异常"
+        ]
+      ],
+      "note": "**为什么微信退款失败要回滚 refund，但后续步骤失败不回滚？**",
+      "writes": [
+        "refund",
+        "order"
+      ]
+    }
+  ]
+};
+
+const BLOCKS_STATS = {
+  "total": 8,
+  "stable": 8,
+  "draft": 0,
+  "deprecated": 0
+};
+
+const LAYERS_DATA = [
+  {
+    "label": "入口层 BFF — 运营后台",
+    "type": "bff",
+    "services": [
+      "admin-server"
+    ]
+  },
+  {
+    "label": "入口层 BFF — C 端用户",
+    "type": "bff",
+    "services": [
+      "mini-server"
+    ]
+  },
+  {
+    "label": "核心业务层",
+    "type": "core",
+    "services": [
+      "member-service",
+      "order-service",
+      "product-service",
+      "promotion-service"
+    ]
+  },
+  {
+    "label": "基础设施",
+    "type": "infra",
+    "services": [
+      "数据库",
+      "消息队列"
+    ]
+  },
+  {
+    "label": "外部系统",
+    "type": "external",
+    "services": [
+      "支付平台"
+    ]
+  }
+];
+</script>
+<style>
+:root {
+  --bg: #F8FAFC;
+  --surface: #FFFFFF;
+  --surface-2: #F1F5F9;
+  --border: #E2E8F0;
+  --text-1: #0F172A;
+  --text-2: #475569;
+  --text-3: #94A3B8;
+  --brand: #2563EB;
+  --brand-glow: rgba(37,99,235,0.06);
+  --blue: #2563EB;
+  --blue-glow: rgba(37,99,235,0.06);
+  --blue-border: #93C5FD;
+  --purple: #7C3AED;
+  --purple-glow: rgba(124,58,237,0.06);
+  --purple-border: #C4B5FD;
+  --green: #059669;
+  --green-glow: rgba(5,150,105,0.06);
+  --green-border: #6EE7B7;
+  --orange: #D97706;
+  --orange-glow: rgba(217,119,6,0.06);
+  --cyan: #0E7490;
+  --radius: 12px;
+  --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'PingFang SC', sans-serif; background: var(--bg); color: var(--text-1); line-height: 1.6; min-height: 100vh; }
+
+/* Header */
+.header { padding: 24px 32px 16px; text-align: center; }
+.header h1 { font-size: 22px; font-weight: 700; color: var(--text-1); }
+.header p { font-size: 13px; color: var(--text-3); margin-top: 4px; }
+.header-stats { display: flex; justify-content: center; gap: 20px; margin-top: 12px; }
+.header-stat { font-size: 12px; color: var(--text-2); }
+.header-stat strong { color: var(--brand); }
+
+/* Architecture Map */
+.arch-map { max-width: 1000px; margin: 0 auto; padding: 0 24px; }
+
+.arch-layer {
+  position: relative; margin-bottom: 16px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 20px; background: var(--surface);
+}
+.arch-layer-label {
+  position: absolute; top: -9px; left: 20px;
+  background: var(--surface); padding: 0 10px;
+  font-size: 11px; color: var(--text-3); font-weight: 500; letter-spacing: 0.5px;
+}
+.arch-nodes { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+
+.arch-node {
+  padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: all var(--transition); position: relative;
+  border: 1px solid var(--border); background: var(--surface-2);
+}
+.arch-node:hover { transform: translateY(-2px); }
+.arch-node.active { transform: translateY(-2px); }
+.arch-node .node-count {
+  position: absolute; top: -6px; right: -6px;
+  width: 18px; height: 18px; border-radius: 50%;
+  font-size: 10px; display: flex; align-items: center; justify-content: center;
+  font-weight: 600; background: var(--brand); color: white;
+  box-shadow: 0 2px 4px rgba(37,99,235,0.3);
+}
+
+/* Node colors by layer */
+.arch-node.bff { border-color: var(--blue-border); color: var(--blue); }
+.arch-node.bff:hover, .arch-node.bff.active { background: var(--blue-glow); border-color: var(--blue); box-shadow: 0 4px 16px rgba(37,99,235,0.12); }
+.arch-node.core { border-color: var(--purple-border); color: var(--purple); }
+.arch-node.core:hover, .arch-node.core.active { background: var(--purple-glow); border-color: var(--purple); box-shadow: 0 4px 16px rgba(124,58,237,0.12); }
+.arch-node.infra { border-color: var(--green-border); color: var(--green); }
+.arch-node.infra:hover, .arch-node.infra.active { background: var(--green-glow); border-color: var(--green); box-shadow: 0 4px 16px rgba(5,150,105,0.12); }
+.arch-node.external { border-color: #FDE68A; color: var(--orange); }
+.arch-node.external:hover, .arch-node.external.active { background: var(--orange-glow); border-color: var(--orange); box-shadow: 0 4px 16px rgba(217,119,6,0.12); }
+
+/* Connection arrow */
+.arch-arrow { text-align: center; padding: 6px 0; color: var(--text-3); font-size: 18px; }
+
+/* Blocks Panel */
+.blocks-panel {
+  max-width: 1000px; margin: 24px auto 0; padding: 0 24px 40px;
+  display: none;
+}
+.blocks-panel.visible { display: block; animation: fadeUp 0.3s ease; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+.panel-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 0; border-bottom: 1px solid var(--border); margin-bottom: 16px;
+}
+.panel-title { font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+.panel-title .svc-dot { width: 10px; height: 10px; border-radius: 50%; }
+.panel-close {
+  width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--surface); cursor: pointer; display: flex; align-items: center;
+  justify-content: center; color: var(--text-3); font-size: 16px; transition: all var(--transition);
+}
+.panel-close:hover { background: var(--surface-2); color: var(--text-1); }
+
+/* Block Groups */
+.block-group { margin-bottom: 20px; }
+.block-group-title { font-size: 12px; color: var(--text-3); font-weight: 500; margin-bottom: 8px; padding-left: 2px; }
+
+.block-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+
+/* Block Item */
+.block-item {
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px;
+  padding: 14px 16px; cursor: pointer; transition: all var(--transition);
+}
+.block-item:hover { border-color: var(--brand); background: #F8FAFF; }
+.block-item.expanded { grid-column: 1 / -1; border-color: var(--brand); background: #EFF6FF; cursor: default; }
+.block-item-top { display: flex; align-items: center; justify-content: space-between; }
+.block-item-name { font-size: 13px; font-weight: 600; }
+.block-item-trigger { font-size: 11px; color: var(--text-3); margin-top: 4px; font-family: 'JetBrains Mono', monospace; }
+.block-item-services { display: flex; gap: 4px; margin-top: 8px; flex-wrap: wrap; }
+.block-svc-tag { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-2); }
+.block-svc-tag.highlight { border-color: var(--brand); color: var(--brand); background: #EFF6FF; }
+.block-svc-tag.mq { border-color: #FDE68A; color: var(--orange); background: #FFFBEB; }
+
+/* Block Detail */
+.block-detail { display: none; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+.block-item.expanded .block-detail { display: block; }
+
+.detail-tabs { display: flex; gap: 0; margin-bottom: 12px; border-bottom: 1px solid var(--border); }
+.dtab { padding: 7px 14px; font-size: 12px; color: var(--text-3); cursor: pointer; border-bottom: 2px solid transparent; transition: all var(--transition); }
+.dtab:hover { color: var(--text-2); }
+.dtab.active { color: var(--brand); border-bottom-color: var(--brand); }
+.dpanel { display: none; }
+.dpanel.active { display: block; }
+
+/* Flow */
+.flow-list { list-style: none; }
+.flow-item { display: flex; align-items: flex-start; gap: 10px; padding: 6px 0; }
+.flow-dot { width: 7px; height: 7px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; background: var(--brand); }
+.flow-item.cross .flow-dot { background: var(--orange); }
+.flow-text { font-size: 12px; color: var(--text-2); }
+.flow-text .svc { font-weight: 600; color: var(--text-1); }
+.flow-text .arr { color: var(--text-3); }
+
+/* Mermaid */
+.mermaid-box { background: var(--surface-2); border-radius: 8px; padding: 14px; overflow-x: auto; border: 1px solid var(--border); }
+
+/* Error table */
+.etable { width: 100%; border-collapse: collapse; font-size: 12px; }
+.etable th { text-align: left; padding: 6px 10px; color: var(--text-3); border-bottom: 1px solid var(--border); }
+.etable td { padding: 6px 10px; color: var(--text-2); border-bottom: 1px solid var(--border); }
+
+/* Note */
+.note-box { background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 8px; padding: 10px 14px; font-size: 12px; color: var(--text-2); line-height: 1.6; }
+
+/* Writes */
+.writes { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.writes-label { font-size: 11px; color: var(--text-3); }
+.write-tag { font-size: 11px; padding: 2px 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; font-family: monospace; color: var(--text-2); }
+
+/* Close block */
+.block-close { font-size: 11px; color: var(--brand); cursor: pointer; margin-top: 10px; display: inline-block; }
+.block-close:hover { text-decoration: underline; }
+
+@media (max-width: 768px) {
+  .arch-map, .blocks-panel { padding: 0 12px; }
+  .block-grid { grid-template-columns: 1fr; }
+  .arch-nodes { gap: 6px; }
+  .arch-node { padding: 8px 12px; font-size: 12px; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>fresh-mart</h1>
+  <p>点击服务节点查看其支持的功能积木</p>
+  <div class="header-stats" id="header-stats"></div>
+</div>
+
+<div class="arch-map" id="arch-map"></div>
+<div class="blocks-panel" id="blocks-panel"></div>
+
+<script>
+mermaid.initialize({ startOnLoad: false, theme: 'neutral', securityLevel: 'loose' });
+
+// === Build service map ===
+const svcMap = {};  // service -> [block, ...]
+const allBlocks = [];
+Object.entries(BLOCKS_DATA).forEach(([group, blocks]) => {
+  blocks.forEach(b => {
+    const block = { ...b, group };
+    allBlocks.push(block);
+    b.services.forEach(s => {
+      if (!svcMap[s]) svcMap[s] = [];
+      svcMap[s].push(block);
+    });
+  });
+});
+
+// Service topology definition — 由 vibe-blocks build 注入（基于实际积木自动推导）
+const layers = LAYERS_DATA;
+
+let activeService = null;
+
+// === Render Stats ===
+document.getElementById('header-stats').innerHTML =
+  `<span class="header-stat"><strong>${BLOCKS_STATS.total}</strong> 积木</span>` +
+  `<span class="header-stat"><strong>${Object.keys(svcMap).length}</strong> 服务</span>` +
+  `<span class="header-stat"><strong>${Object.keys(BLOCKS_DATA).length}</strong> 分组</span>`;
+
+// === Render Architecture Map ===
+function renderArchMap() {
+  const map = document.getElementById('arch-map');
+  map.innerHTML = layers.map((layer, i) => {
+    const nodes = layer.services.map(svc => {
+      const count = (svcMap[svc] || []).length;
+      const isActive = activeService === svc;
+      const hasBlocks = count > 0;
+      return `<div class="arch-node ${layer.type} ${isActive ? 'active' : ''} ${!hasBlocks ? 'no-blocks' : ''}"
+                   data-svc="${svc}" ${!hasBlocks ? 'style="opacity:0.4;cursor:default;"' : ''}>
+        ${svc}
+        ${count > 0 ? `<span class="node-count">${count}</span>` : ''}
+      </div>`;
+    }).join('');
+
+    const nextLayer = layers[i + 1];
+    const arrow = (i < layers.length - 1 && layer.type !== nextLayer.type) ? '<div class="arch-arrow">↓</div>' : '';
+
+    return `<div class="arch-layer">
+      <span class="arch-layer-label">${layer.label}</span>
+      <div class="arch-nodes">${nodes}</div>
+    </div>${arrow}`;
+  }).join('');
+
+  // Bind click
+  map.querySelectorAll('.arch-node').forEach(node => {
+    node.addEventListener('click', () => {
+      const svc = node.dataset.svc;
+      if (!(svcMap[svc] || []).length) return;
+      if (activeService === svc) {
+        activeService = null;
+        document.getElementById('blocks-panel').classList.remove('visible');
+      } else {
+        activeService = svc;
+        renderBlocksPanel(svc);
+      }
+      renderArchMap();
+    });
+  });
+}
+
+// === Render Blocks Panel ===
+function renderBlocksPanel(svc) {
+  const panel = document.getElementById('blocks-panel');
+  const blocks = svcMap[svc] || [];
+  panel.classList.add('visible');
+
+  // Group blocks by their group name
+  const grouped = {};
+  blocks.forEach(b => {
+    if (!grouped[b.group]) grouped[b.group] = [];
+    grouped[b.group].push(b);
+  });
+
+  // Determine dot color
+  const layer = layers.find(l => l.services.includes(svc));
+  const dotColor = layer ? (layer.type === 'bff' ? 'var(--blue)' : layer.type === 'core' ? 'var(--purple)' : layer.type === 'external' ? 'var(--orange)' : 'var(--green)') : 'var(--brand)';
+
+  let html = `<div class="panel-header">
+    <div class="panel-title">
+      <span class="svc-dot" style="background:${dotColor}"></span>
+      <span>${esc(svc)}</span>
+      <span style="font-size:12px;color:var(--text-3);font-weight:400;">${blocks.length} 个功能积木</span>
+    </div>
+    <button class="panel-close" id="panel-close">✕</button>
+  </div>`;
+
+  Object.entries(grouped).forEach(([groupName, groupBlocks]) => {
+    html += `<div class="block-group">
+      <div class="block-group-title">${esc(groupName)}</div>
+      <div class="block-grid">`;
+
+    groupBlocks.forEach(block => {
+      const svcs = block.services.map(s =>
+        `<span class="block-svc-tag ${s === svc ? 'highlight' : ''} ${(s === 'MQ' || s === '消息队列' || /rocket\s*mq|kafka|rabbit\s*mq/i.test(s)) ? 'mq' : ''}">${s}</span>`
+      ).join('') + (block.hasMQ ? '<span class="block-svc-tag mq">MQ</span>' : '');
+
+      const stepsHtml = buildSteps(block.steps);
+      const errHtml = buildErrors(block.errors);
+      const writesHtml = buildWrites(block.writes);
+
+      html += `<div class="block-item" data-id="${block.id}">
+        <div class="block-item-top">
+          <span class="block-item-name">${esc(block.name)}</span>
+        </div>
+        <div class="block-item-trigger">${esc(block.trigger)}</div>
+        <div class="block-item-services">${svcs}</div>
+        <div class="block-detail">
+          <div class="detail-tabs">
+            <span class="dtab active" data-t="flow">链路</span>
+            <span class="dtab" data-t="seq">时序图</span>
+            ${block.errors && block.errors.length ? '<span class="dtab" data-t="err">异常</span>' : ''}
+            ${block.note ? '<span class="dtab" data-t="note">备注</span>' : ''}
+          </div>
+          <div class="dpanel active" data-p="flow">${stepsHtml}${writesHtml}</div>
+          <div class="dpanel" data-p="seq"><div class="mermaid-box"><pre class="mermaid">${block.mermaid}</pre></div></div>
+          ${block.errors && block.errors.length ? `<div class="dpanel" data-p="err">${errHtml}</div>` : ''}
+          ${block.note ? `<div class="dpanel" data-p="note"><div class="note-box">${esc(block.note)}</div></div>` : ''}
+          <span class="block-close">收起</span>
+        </div>
+      </div>`;
+    });
+
+    html += `</div></div>`;
+  });
+
+  panel.innerHTML = html;
+
+  // Bind events
+  document.getElementById('panel-close').addEventListener('click', () => {
+    activeService = null;
+    panel.classList.remove('visible');
+    renderArchMap();
+  });
+
+  panel.querySelectorAll('.block-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      if (item.classList.contains('expanded') && !e.target.classList.contains('dtab') && !e.target.classList.contains('block-close')) return;
+      if (e.target.classList.contains('block-close')) {
+        item.classList.remove('expanded');
+        return;
+      }
+      if (e.target.classList.contains('dtab')) {
+        const tab = e.target.dataset.t;
+        item.querySelectorAll('.dtab').forEach(t => t.classList.remove('active'));
+        item.querySelectorAll('.dpanel').forEach(p => p.classList.remove('active'));
+        e.target.classList.add('active');
+        item.querySelector(`[data-p="${tab}"]`).classList.add('active');
+        if (tab === 'seq') {
+          const mel = item.querySelector('.mermaid');
+          if (mel && !mel.dataset.rendered) { mermaid.run({ nodes: [mel] }); mel.dataset.rendered = 'true'; }
+        }
+        return;
+      }
+      // Expand
+      panel.querySelectorAll('.block-item.expanded').forEach(i => i.classList.remove('expanded'));
+      item.classList.add('expanded');
+      setTimeout(() => item.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
+    });
+  });
+
+  // Scroll to panel
+  setTimeout(() => panel.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+}
+
+// === Helpers ===
+function esc(s) { return s ? s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : ''; }
+
+function buildSteps(steps) {
+  if (!steps || !steps.length) return '<p style="color:var(--text-3);font-size:12px;">无</p>';
+  return `<ul class="flow-list">${steps.map(s => {
+    const isCross = s.includes('→');
+    let text = esc(s);
+    if (isCross) {
+      text = text.replace(/^(.+?)→(.+?):(.*)$/, '<span class="svc">$1</span><span class="arr"> → </span><span class="svc">$2</span>:$3');
+    } else {
+      text = text.replace(/^\[(.+?)\]\s*(.*)$/, '<span class="svc">[$1]</span> $2');
+    }
+    return `<li class="flow-item ${isCross ? 'cross' : ''}"><span class="flow-dot"></span><span class="flow-text">${text}</span></li>`;
+  }).join('')}</ul>`;
+}
+
+function buildErrors(errors) {
+  if (!errors || !errors.length) return '';
+  return `<table class="etable"><thead><tr><th>场景</th><th>处理</th><th>返回</th></tr></thead><tbody>${errors.map(e => `<tr><td>${esc(e[0])}</td><td>${esc(e[1])}</td><td>${esc(e[2])}</td></tr>`).join('')}</tbody></table>`;
+}
+
+function buildWrites(writes) {
+  if (!writes || !writes.length) return '';
+  return `<div class="writes"><span class="writes-label">写表:</span>${writes.map(w => `<span class="write-tag">${esc(w)}</span>`).join('')}</div>`;
+}
+
+// === Keyboard ===
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    activeService = null;
+    document.getElementById('blocks-panel').classList.remove('visible');
+    document.querySelectorAll('.block-item.expanded').forEach(i => i.classList.remove('expanded'));
+    renderArchMap();
+  }
+});
+
+// === Init ===
+renderArchMap();
+</script>
+</body>
+</html>
