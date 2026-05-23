@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-05-23
+
+### Fixed
+- 修复 ruff E741 报错（重命名 build.py 中的变量 l → lyr）
+
 ## [0.1.0] - 2026-05-23
 
 ### Added
