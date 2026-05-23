@@ -3,7 +3,7 @@ requires = ["hatchling>=1.18"]
 build-backend = "hatchling.build"
 
 [project]
-name = "vibe-blocks"
+name = "vibeblocks-cli"
 version = "0.1.0"
 description = "让 AI 真正读懂你的代码 — 业务流程积木化文档体系"
 readme = "README.md"

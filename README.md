@@ -4,7 +4,7 @@
 
 **让 AI 真正读懂你的代码 — 业务流程积木化文档体系**
 
-[![PyPI version](https://img.shields.io/pypi/v/vibe-blocks.svg)](https://pypi.org/project/vibe-blocks/)
+[![PyPI version](https://img.shields.io/pypi/v/vibeblocks-cli.svg)](https://pypi.org/project/vibeblocks-cli/)
 [![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Docs](https://img.shields.io/badge/docs-online-blueviolet.svg)](docs/)
@@ -34,7 +34,7 @@
 
 ```bash
 # 安装
-pip install vibe-blocks
+pip install vibeblocks-cli
 
 # 在你的项目根目录一键初始化
 cd your-project
